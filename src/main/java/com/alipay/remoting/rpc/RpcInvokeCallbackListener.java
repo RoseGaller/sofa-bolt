@@ -92,6 +92,7 @@ public class RpcInvokeCallbackListener implements InvokeCallbackListener {
          */
         @Override
         public void run() {
+            //回调函数
             InvokeCallback callback = future.getInvokeCallback();
             // a lot of try-catches to protect thread pool
             ResponseCommand response = null;
@@ -105,6 +106,7 @@ public class RpcInvokeCallbackListener implements InvokeCallbackListener {
             }
             if (response == null || response.getResponseStatus() != ResponseStatus.SUCCESS) {
                 try {
+                    //根据response是否为空以及response status，创建不同的异常
                     Exception e;
                     if (response == null) {
                         e = new InvokeException("Exception caught in invocation. The address is "
@@ -148,6 +150,7 @@ public class RpcInvokeCallbackListener implements InvokeCallbackListener {
 
                         }
                     }
+                    //执行回调的异常方法
                     callback.onException(e);
                 } catch (Throwable e) {
                     logger
@@ -155,7 +158,7 @@ public class RpcInvokeCallbackListener implements InvokeCallbackListener {
                             "Exception occurred in user defined InvokeCallback#onException() logic, The address is {}",
                             this.remoteAddress, e);
                 }
-            } else {
+            } else { // 响应成功
                 ClassLoader oldClassLoader = null;
                 try {
                     if (future.getAppClassLoader() != null) {

@@ -232,7 +232,8 @@ public class DefaultInvokeFuture implements InvokeFuture {
         return invokeContext;
     }
 
-    /** 
+    /**
+     * 响应超时或者发送失败时调用
      * @see com.alipay.remoting.InvokeFuture#tryAsyncExecuteInvokeCallbackAbnormally()
      */
     @Override

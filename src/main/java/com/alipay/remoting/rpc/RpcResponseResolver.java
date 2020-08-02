@@ -34,6 +34,8 @@ import com.alipay.remoting.rpc.protocol.RpcResponseCommand;
 import com.alipay.remoting.util.StringUtils;
 
 /**
+ * 根据resonponse command 解析出response object
+ *
  * Resolve response object from response command.
  *
  * @author jiangping
@@ -67,6 +69,7 @@ public class RpcResponseResolver {
 
     }
 
+    //如果responseCommand为空或者响应状态不是成功，则抛出异常
     private static void preProcess(ResponseCommand responseCommand, String addr)
                                                                                 throws RemotingException {
         RemotingException e = null;

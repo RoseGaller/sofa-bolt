@@ -30,6 +30,10 @@ import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.util.Attribute;
 
 /**
+ * 编码器，使用解码时解析到的协议，对发送的数据进行编码
+ * 此编码器是无状态的，可以被每个channel使用，因此可以被标注Sharable
+ *
+ *
  * Protocol code based newEncoder, the main newEncoder for a certain protocol, which is lead by one or multi bytes (magic code).
  *
  * Notice: this is stateless can be noted as {@link io.netty.channel.ChannelHandler.Sharable}
@@ -50,14 +54,17 @@ public class ProtocolCodeBasedEncoder extends MessageToByteEncoder<Serializable>
     @Override
     protected void encode(ChannelHandlerContext ctx, Serializable msg, ByteBuf out)
                                                                                    throws Exception {
+        //获取解码时，此channel使用的协议
         Attribute<ProtocolCode> att = ctx.channel().attr(Connection.PROTOCOL);
         ProtocolCode protocolCode;
-        if (att == null || att.get() == null) {
+        if (att == null || att.get() == null) { //默认的协议码
             protocolCode = this.defaultProtocolCode;
         } else {
             protocolCode = att.get();
         }
+         //获取协议
         Protocol protocol = ProtocolManager.getProtocol(protocolCode);
+        //获取协议的编码器，进行编码
         protocol.getEncoder().encode(ctx, msg, out);
     }
 

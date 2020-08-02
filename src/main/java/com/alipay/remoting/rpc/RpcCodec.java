@@ -26,18 +26,24 @@ import com.alipay.remoting.rpc.protocol.RpcProtocolV2;
 import io.netty.channel.ChannelHandler;
 
 /**
+ * Server端默认的编解码器
+ *
  * @author muyun.cyt
  * @version 2018/6/26 下午3:51
  */
 public class RpcCodec implements Codec {
 
+    //编码器
     @Override
     public ChannelHandler newEncoder() {
+        //指定编码协议，默认RpcProtocolV2
         return new ProtocolCodeBasedEncoder(ProtocolCode.fromBytes(RpcProtocolV2.PROTOCOL_CODE));
     }
 
+    //解码器
     @Override
     public ChannelHandler newDecoder() {
+        //指定协议的长度
         return new RpcProtocolDecoder(RpcProtocolManager.DEFAULT_PROTOCOL_CODE_LENGTH);
     }
 }

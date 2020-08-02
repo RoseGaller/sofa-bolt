@@ -26,6 +26,7 @@ import io.netty.channel.ChannelHandler;
 public interface Codec {
 
     /**
+     * 编码Handler（发出数据）
      * Create an encoder instance.
      *
      * @return new encoder instance
@@ -33,6 +34,7 @@ public interface Codec {
     ChannelHandler newEncoder();
 
     /**
+     * 解码Handler（接收数据）
      * Create an decoder instance.
      *
      * @return new decoder instance

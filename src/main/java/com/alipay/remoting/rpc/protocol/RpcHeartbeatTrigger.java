@@ -41,6 +41,7 @@ import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
 
 /**
+ * 发送IdelEvent时调用此类的heartbeatTriggered
  * Handler for heart beat.
  * 
  * @author jiangping
@@ -61,6 +62,8 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
     }
 
     /**
+     *
+     * 每次发生读写空闲时，向远端发送心跳；如果连续三次响应失败，将远端的连接关闭
      * @see com.alipay.remoting.HeartbeatTrigger#heartbeatTriggered(io.netty.channel.ChannelHandlerContext)
      */
     @Override
@@ -77,12 +80,15 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                 logger.warn("Exception caught when closing connection in SharableHandler.", e);
             }
         } else {
+            //是否开启心跳检测
             boolean heartbeatSwitch = ctx.channel().attr(Connection.HEARTBEAT_SWITCH).get();
             if (!heartbeatSwitch) {
                 return;
             }
+            //初始化时调用IDGenerator.nextId()，设置唯一标志
             final HeartbeatCommand heartbeat = new HeartbeatCommand();
 
+            //发送心跳之后的回调函数
             final InvokeFuture future = new DefaultInvokeFuture(heartbeat.getId(),
                 new InvokeCallbackListener() {
                     @Override
@@ -97,7 +103,7 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                             return;
                         }
                         if (response != null
-                            && response.getResponseStatus() == ResponseStatus.SUCCESS) {
+                            && response.getResponseStatus() == ResponseStatus.SUCCESS) { //心跳响应成功
                             if (logger.isDebugEnabled()) {
                                 logger.debug("Heartbeat ack received! Id={}, from remoteAddr={}",
                                     response.getId(),
@@ -106,7 +112,7 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                             ctx.channel().attr(Connection.HEARTBEAT_COUNT).set(0);
                         } else {
                             if (response != null
-                                && response.getResponseStatus() == ResponseStatus.TIMEOUT) {
+                                && response.getResponseStatus() == ResponseStatus.TIMEOUT) { ////心跳响应失败
                                 logger.error("Heartbeat timeout! The address is {}",
                                     RemotingUtil.parseRemoteAddress(ctx.channel()));
                             } else {
@@ -115,7 +121,7 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                                     response == null ? null : response.getResponseStatus(),
                                     RemotingUtil.parseRemoteAddress(ctx.channel()));
                             }
-                            Integer times = ctx.channel().attr(Connection.HEARTBEAT_COUNT).get();
+                            Integer times = ctx.channel().attr(Connection.HEARTBEAT_COUNT).get(); //增加心跳失败的次数
                             ctx.channel().attr(Connection.HEARTBEAT_COUNT).set(times + 1);
                         }
                     }
@@ -125,12 +131,14 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                         return ctx.channel().remoteAddress().toString();
                     }
                 }, null, heartbeat.getProtocolCode().getFirstByte(), this.commandFactory);
+
             final int heartbeatId = heartbeat.getId();
             conn.addInvokeFuture(future);
             if (logger.isDebugEnabled()) {
-                logger.debug("Send heartbeat, successive count={}, Id={}, to remoteAddr={}",
+                logger.debug("Send hea、tbeat, successive count={}, Id={}, to remoteAddr={}",
                     heartbeatTimes, heartbeatId, RemotingUtil.parseRemoteAddress(ctx.channel()));
             }
+            //向远端发送HeartbeatCommand
             ctx.writeAndFlush(heartbeat).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -145,6 +153,7 @@ public class RpcHeartbeatTrigger implements HeartbeatTrigger {
                     }
                 }
             });
+            //设置超时定时器（借助Netty的定时器）
             TimerHolder.getTimer().newTimeout(new TimerTask() {
                 @Override
                 public void run(Timeout timeout) throws Exception {

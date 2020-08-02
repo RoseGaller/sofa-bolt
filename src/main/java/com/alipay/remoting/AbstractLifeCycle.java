@@ -27,7 +27,7 @@ public abstract class AbstractLifeCycle implements LifeCycle {
 
     @Override
     public void startup() throws LifeCycleException {
-        if (isStarted.compareAndSet(false, true)) {
+        if (isStarted.compareAndSet(false, true)) { //只允许启动一次
             return;
         }
         throw new LifeCycleException("this component has started");

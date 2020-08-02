@@ -28,6 +28,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 
 /**
+ *
+ * 解码器
+ * 注意：此解码器是有状态的，因此不能用 Sharable注解标志，是channel私有的
+ *
  * Protocol code based decoder, the main decoder for a certain protocol, which is lead by one or multi bytes (magic code).
  *
  * Notice: this is not stateless, can not be noted as {@link io.netty.channel.ChannelHandler.Sharable}
@@ -49,12 +53,14 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
     }
 
     /**
+     * 解析出 协议码
      * decode the protocol code
      *
      * @param in input byte buf
      * @return an instance of ProtocolCode
      */
     protected ProtocolCode decodeProtocolCode(ByteBuf in) {
+        //根据指定的协议长度解析出请求使用的协议
         if (in.readableBytes() >= protocolCodeLength) {
             byte[] protocolCodeBytes = new byte[protocolCodeLength];
             in.readBytes(protocolCodeBytes);
@@ -64,6 +70,8 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
     }
 
     /**
+     * 解析协议版本
+     *
      * decode the protocol version
      *
      * @param in input byte buf
@@ -79,8 +87,10 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         in.markReaderIndex();
+        //解析协议码
         ProtocolCode protocolCode = decodeProtocolCode(in);
         if (null != protocolCode) {
+            //解析协议版本号
             byte protocolVersion = decodeProtocolVersion(in);
             if (ctx.channel().attr(Connection.PROTOCOL).get() == null) {
                 ctx.channel().attr(Connection.PROTOCOL).set(protocolCode);
@@ -88,6 +98,7 @@ public class ProtocolCodeBasedDecoder extends AbstractBatchDecoder {
                     ctx.channel().attr(Connection.VERSION).set(protocolVersion);
                 }
             }
+
             Protocol protocol = ProtocolManager.getProtocol(protocolCode);
             if (null != protocol) {
                 in.resetReaderIndex();

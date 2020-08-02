@@ -69,7 +69,8 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
         super(executor);
     }
 
-    /**
+    /** 处理请求
+     *
      * @see com.alipay.remoting.AbstractRemotingProcessor#process(com.alipay.remoting.RemotingContext, com.alipay.remoting.RemotingCommand, java.util.concurrent.ExecutorService)
      */
     @Override
@@ -78,6 +79,7 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
         if (!deserializeRequestCommand(ctx, cmd, RpcDeserializeLevel.DESERIALIZE_CLAZZ)) {
             return;
         }
+        //根据请求中的requestClass，获取自定义UserProcessor
         UserProcessor userProcessor = ctx.getUserProcessor(cmd.getRequestClass());
         if (userProcessor == null) {
             String errMsg = "No user processor found for request: " + cmd.getRequestClass();
@@ -88,40 +90,40 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
         }
 
         // set timeout check state from user's processor
-        ctx.setTimeoutDiscard(userProcessor.timeoutDiscard());
+        ctx.setTimeoutDiscard(userProcessor.timeoutDiscard()); //超时，将请求丢弃,快速失败
 
         // to check whether to process in io thread
-        if (userProcessor.processInIOThread()) {
+        if (userProcessor.processInIOThread()) { //是否在IO线程执行（NioEventLoop）
             if (!deserializeRequestCommand(ctx, cmd, RpcDeserializeLevel.DESERIALIZE_ALL)) {
                 return;
             }
             // process in io thread
-            new ProcessTask(ctx, cmd).run();
+            new ProcessTask(ctx, cmd).run(); //IO线程中直接运行
             return;// end
         }
 
         Executor executor;
-        // to check whether get executor using executor selector
+        // to check whether get executor using executor selector 是否用线程池选择器获取线程池
         if (null == userProcessor.getExecutorSelector()) {
             executor = userProcessor.getExecutor();
         } else {
             // in case haven't deserialized in io thread
             // it need to deserialize clazz and header before using executor dispath strategy
-            if (!deserializeRequestCommand(ctx, cmd, RpcDeserializeLevel.DESERIALIZE_HEADER)) {
+            if (!deserializeRequestCommand(ctx, cmd, RpcDeserializeLevel.DESERIALIZE_HEADER)) { //反序列化，获取请求Header、请求Class
                 return;
             }
             //try get executor with strategy
             executor = userProcessor.getExecutorSelector().select(cmd.getRequestClass(),
-                cmd.getRequestHeader());
+                cmd.getRequestHeader()); //根据getRequestClass、RequestHeader选择线程池
         }
 
         // Till now, if executor still null, then try default
         if (executor == null) {
-            executor = (this.getExecutor() == null ? defaultExecutor : this.getExecutor());
+            executor = (this.getExecutor() == null ? defaultExecutor : this.getExecutor()); //如果userProcessor中的executor为空，就用默认的executor
         }
 
         // use the final executor dispatch process task
-        executor.execute(new ProcessTask(ctx, cmd));
+        executor.execute(new ProcessTask(ctx, cmd)); //将ctx、cmd封装成ProcessTask，扔到executor执行
     }
 
     /**
@@ -133,15 +135,16 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
         long currentTimestamp = System.currentTimeMillis();
 
         preProcessRemotingContext(ctx, cmd, currentTimestamp);
-        if (ctx.isTimeoutDiscard() && ctx.isRequestTimeout()) {
+        if (ctx.isTimeoutDiscard() && ctx.isRequestTimeout()) { //判断是否超时,超时直接丢弃
             timeoutLog(cmd, currentTimestamp, ctx);// do some log
             return;// then, discard this request
         }
         debugLog(ctx, cmd, currentTimestamp);
-        // decode request all
+        // decode request all 反序列化出请求的所有信息
         if (!deserializeRequestCommand(ctx, cmd, RpcDeserializeLevel.DESERIALIZE_ALL)) {
             return;
         }
+        //UserProcessor处理接收到的请求
         dispatchToUserProcessor(ctx, cmd);
     }
 
@@ -156,9 +159,10 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
     public void sendResponseIfNecessary(final RemotingContext ctx, byte type,
                                         final RemotingCommand response) {
         final int id = response.getId();
-        if (type != RpcCommandType.REQUEST_ONEWAY) {
+        if (type != RpcCommandType.REQUEST_ONEWAY) { //请求类型REQUEST_ONEWAY，不需要发送响应
             RemotingCommand serializedResponse = response;
             try {
+                //序列化（class）
                 response.serialize();
             } catch (SerializationException e) {
                 String errMsg = "SerializationException occurred when sendResponseIfNecessary in RpcRequestProcessor, id="
@@ -215,11 +219,11 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
      * @param cmd rpc request command
      */
     private void dispatchToUserProcessor(RemotingContext ctx, RpcRequestCommand cmd) {
-        final int id = cmd.getId();
-        final byte type = cmd.getType();
+        final int id = cmd.getId(); //请求Id
+        final byte type = cmd.getType(); //请求类型
         // processor here must not be null, for it have been checked before
         UserProcessor processor = ctx.getUserProcessor(cmd.getRequestClass());
-        if (processor instanceof AsyncUserProcessor) {
+        if (processor instanceof AsyncUserProcessor) { //异步处理
             try {
                 processor.handleRequest(processor.preHandleRequest(ctx, cmd.getRequestObject()),
                     new RpcAsyncContext(ctx, cmd, this), cmd.getRequestObject());
@@ -234,7 +238,7 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
                 sendResponseIfNecessary(ctx, type, this.getCommandFactory()
                     .createExceptionResponse(id, t, errMsg));
             }
-        } else {
+        } else { //同步处理（先调用preHandleRequest，生成BizContext，将其和请求对象一起传递给handleRequest）
             try {
                 Object responseObject = processor
                     .handleRequest(processor.preHandleRequest(ctx, cmd.getRequestObject()),
@@ -257,6 +261,8 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
     }
 
     /**
+     * 根据level，反序列化request class、request header、request content
+     *
      * deserialize request command
      *
      * @return true if deserialize success; false if exception catched
@@ -294,11 +300,11 @@ public class RpcRequestProcessor extends AbstractRemotingProcessor<RpcRequestCom
      */
     private void preProcessRemotingContext(RemotingContext ctx, RpcRequestCommand cmd,
                                            long currentTimestamp) {
-        ctx.setArriveTimestamp(cmd.getArriveTime());
-        ctx.setTimeout(cmd.getTimeout());
-        ctx.setRpcCommandType(cmd.getType());
+        ctx.setArriveTimestamp(cmd.getArriveTime()); //请求到达时间
+        ctx.setTimeout(cmd.getTimeout()); //请求超时时间
+        ctx.setRpcCommandType(cmd.getType()); //请求类型
         ctx.getInvokeContext().putIfAbsent(InvokeContext.BOLT_PROCESS_WAIT_TIME,
-            currentTimestamp - cmd.getArriveTime());
+            currentTimestamp - cmd.getArriveTime()); //此请求正式执行前等待的时间
     }
 
     /**

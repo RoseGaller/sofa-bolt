@@ -29,7 +29,10 @@ import io.netty.handler.codec.DecoderException;
 import io.netty.util.internal.RecyclableArrayList;
 import io.netty.util.internal.StringUtil;
 
+
 /**
+ * 批量解包、批量提交
+ *
  * This class mainly hack the {@link io.netty.handler.codec.ByteToMessageDecoder} to provide batch submission capability.
  * This can be used the same way as ByteToMessageDecoder except the case your following inbound handler may get a decoded msg,
  * which actually is an array list, then you can submit the list of msgs to an executor to process. For example
@@ -63,7 +66,7 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
                                                               if (cumulation.writerIndex() > cumulation
                                                                   .maxCapacity()
                                                                                              - in.readableBytes()
-                                                                  || cumulation.refCnt() > 1) {
+                                                                  || cumulation.refCnt() > 1) { //cumulation没有足够空间容纳新读取的数据，进行扩容
                                                                   // Expand cumulation (by replace it) when either there is not more room in the buffer
                                                                   // or if the refCnt is greater then 1 which may happen when the user use slice().retain() or
                                                                   // duplicate().retain().
@@ -77,8 +80,8 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
                                                               } else {
                                                                   buffer = cumulation;
                                                               }
-                                                              buffer.writeBytes(in);
-                                                              in.release();
+                                                              buffer.writeBytes(in); //累积新读取的数据
+                                                              in.release();//及时释放内存
                                                               return buffer;
                                                           }
                                                       };
@@ -240,10 +243,10 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
             RecyclableArrayList out = RecyclableArrayList.newInstance();
             try {
                 ByteBuf data = (ByteBuf) msg;
-                first = cumulation == null;
-                if (first) {
+                first = cumulation == null; //判断是否第一次
+                if (first) { //第一次读取数据
                     cumulation = data;
-                } else {
+                } else { //累积已经读取的数据
                     cumulation = cumulator.cumulate(ctx.alloc(), cumulation, data);
                 }
                 callDecode(ctx, cumulation, out);
@@ -252,23 +255,23 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
             } catch (Throwable t) {
                 throw new DecoderException(t);
             } finally {
-                if (cumulation != null && !cumulation.isReadable()) {
+                if (cumulation != null && !cumulation.isReadable()) { //数据读取成功
                     numReads = 0;
-                    cumulation.release();
+                    cumulation.release(); //释放bytebuf
                     cumulation = null;
-                } else if (++numReads >= discardAfterReads) {
+                } else if (++numReads >= discardAfterReads) {//如果连续读取16次，为了避免发生OOM，将会丢弃数据
                     // We did enough reads already try to discard some bytes so we not risk to see a OOME.
                     // See https://github.com/netty/netty/issues/4275
-                    numReads = 0;
-                    discardSomeReadBytes();
+                    numReads = 0; //重置读取次数
+                    discardSomeReadBytes(); //丢弃数据
                 }
 
                 int size = out.size();
                 if (size == 0) {
                     decodeWasNull = true;
-                } else if (size == 1) {
+                } else if (size == 1) { //读取到一条数据
                     ctx.fireChannelRead(out.get(0));
-                } else {
+                } else { //多条数据，封装成ArrayList
                     ArrayList<Object> ret = new ArrayList<Object>(size);
                     for (int i = 0; i < size; i++) {
                         ret.add(out.get(i));
@@ -276,7 +279,7 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
                     ctx.fireChannelRead(ret);
                 }
 
-                out.recycle();
+                out.recycle(); //对象回收，重复使用
             }
         } else {
             ctx.fireChannelRead(msg);
@@ -364,11 +367,11 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
                 // If it was removed, it is not safe to continue to operate on the buffer.
                 //
                 // See https://github.com/netty/netty/issues/1664
-                if (ctx.isRemoved()) {
+                if (ctx.isRemoved()) { //判断此Handler是否已经移除，防止出现未知的错误
                     break;
                 }
 
-                if (outSize == out.size()) {
+                if (outSize == out.size()) { //接收的数据不完整
                     if (oldInputLength == in.readableBytes()) {
                         break;
                     } else {
@@ -376,7 +379,7 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
                     }
                 }
 
-                if (oldInputLength == in.readableBytes()) {
+                if (oldInputLength == in.readableBytes()) {//可读取的字节数没有发生变化，但是解析出了完整的数据
                     throw new DecoderException(
                         StringUtil.simpleClassName(getClass())
                                 + ".decode() did not read anything but decoded a message.");
@@ -407,9 +410,9 @@ public abstract class AbstractBatchDecoder extends ChannelInboundHandlerAdapter 
 
     static ByteBuf expandCumulation(ByteBufAllocator alloc, ByteBuf cumulation, int readable) {
         ByteBuf oldCumulation = cumulation;
-        cumulation = alloc.buffer(oldCumulation.readableBytes() + readable);
+        cumulation = alloc.buffer(oldCumulation.readableBytes() + readable); //扩容之后的buffer大小=old可读取的字节+新读取的字节
         cumulation.writeBytes(oldCumulation);
-        oldCumulation.release();
+        oldCumulation.release(); //释放内存
         return cumulation;
     }
 

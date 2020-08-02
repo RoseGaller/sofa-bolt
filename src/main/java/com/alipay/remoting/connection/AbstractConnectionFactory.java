@@ -87,7 +87,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
     }
 
     @Override
-    public void init(final ConnectionEventHandler connectionEventHandler) {
+    public void init(final ConnectionEventHandler connectionEventHandler) { //初始化Bootstrap
         bootstrap = new Bootstrap();
         bootstrap.group(workerGroup).channel(NettyEventLoopUtil.getClientSocketChannelClass())
             .option(ChannelOption.TCP_NODELAY, ConfigManager.tcp_nodelay())
@@ -95,10 +95,10 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
             .option(ChannelOption.SO_KEEPALIVE, ConfigManager.tcp_so_keepalive());
 
         // init netty write buffer water mark
-        initWriteBufferWaterMark();
+        initWriteBufferWaterMark();//初始化高低水位线（netty中）
 
         // init byte buf allocator
-        if (ConfigManager.netty_buffer_pooled()) {
+        if (ConfigManager.netty_buffer_pooled()) { //默认使用池化分配器，ByteBuf对象重复使用、内存重复使用
             this.bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         } else {
             this.bootstrap.option(ChannelOption.ALLOCATOR, UnpooledByteBufAllocator.DEFAULT);
@@ -113,7 +113,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
                 pipeline.addLast("encoder", codec.newEncoder());
 
                 boolean idleSwitch = ConfigManager.tcp_idle_switch();
-                if (idleSwitch) {
+                if (idleSwitch) { //空闲开关
                     pipeline.addLast("idleStateHandler",
                         new IdleStateHandler(ConfigManager.tcp_idle(), ConfigManager.tcp_idle(), 0,
                             TimeUnit.MILLISECONDS));
@@ -148,7 +148,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
 
     @Override
     public Connection createConnection(String targetIP, int targetPort, byte version,
-                                       int connectTimeout) throws Exception {
+                                       int connectTimeout) throws Exception { //创建连接
         Channel channel = doCreateConnection(targetIP, targetPort, connectTimeout);
         Connection conn = new Connection(channel,
             ProtocolCode.fromBytes(RpcProtocolV2.PROTOCOL_CODE), version, new Url(targetIP,
@@ -187,7 +187,7 @@ public abstract class AbstractConnectionFactory implements ConnectionFactory {
             logger.debug("connectTimeout of address [{}] is [{}].", address, connectTimeout);
         }
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectTimeout);
-        ChannelFuture future = bootstrap.connect(new InetSocketAddress(targetIP, targetPort));
+        ChannelFuture future = bootstrap.connect(new InetSocketAddress(targetIP, targetPort)); //连接服务端
 
         future.awaitUninterruptibly();
         if (!future.isDone()) {

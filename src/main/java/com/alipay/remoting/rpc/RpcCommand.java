@@ -94,15 +94,16 @@ public abstract class RpcCommand implements RemotingCommand {
     }
 
     /**
+     *
      * Serialize  the class header and content.
      * 
      * @throws Exception
      */
     @Override
-    public void serialize() throws SerializationException {
-        this.serializeClazz();
-        this.serializeHeader(this.invokeContext);
-        this.serializeContent(this.invokeContext);
+    public void serialize() throws SerializationException { //序列化
+        this.serializeClazz(); //序列化class（响应体对应的class）
+        this.serializeHeader(this.invokeContext); //序列化Header
+        this.serializeContent(this.invokeContext); // 序列化responseObject，默认Hessian2
     }
 
     /**
@@ -130,10 +131,10 @@ public abstract class RpcCommand implements RemotingCommand {
      */
     public void deserialize(long mask) throws DeserializationException {
         if (mask <= RpcDeserializeLevel.DESERIALIZE_CLAZZ) {
-            this.deserializeClazz();
+            this.deserializeClazz(); // 获取 request class
         } else if (mask <= RpcDeserializeLevel.DESERIALIZE_HEADER) {
-            this.deserializeClazz();
-            this.deserializeHeader(this.getInvokeContext());
+            this.deserializeClazz();// 获取 request class
+            this.deserializeHeader(this.getInvokeContext()); //获取 request header
         } else if (mask <= RpcDeserializeLevel.DESERIALIZE_ALL) {
             this.deserialize();
         }

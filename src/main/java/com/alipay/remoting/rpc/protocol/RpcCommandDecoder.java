@@ -85,18 +85,18 @@ public class RpcCommandDecoder implements CommandDecoder {
                     if (type == RpcCommandType.REQUEST || type == RpcCommandType.REQUEST_ONEWAY) {
                         //decode request
                         if (in.readableBytes() >= RpcProtocol.getRequestHeaderLength() - 2) {
-                            short cmdCode = in.readShort();
-                            byte ver2 = in.readByte();
-                            int requestId = in.readInt();
-                            byte serializer = in.readByte();
-                            int timeout = in.readInt();
-                            short classLen = in.readShort();
-                            short headerLen = in.readShort();
-                            int contentLen = in.readInt();
+                            short cmdCode = in.readShort(); //2
+                            byte ver2 = in.readByte(); //1
+                            int requestId = in.readInt(); // 4
+                            byte serializer = in.readByte(); //1
+                            int timeout = in.readInt(); //4
+                            short classLen = in.readShort(); //2
+                            short headerLen = in.readShort(); //2
+                            int contentLen = in.readInt(); //4
                             byte[] clazz = null;
                             byte[] header = null;
                             byte[] content = null;
-                            if (in.readableBytes() >= classLen + headerLen + contentLen) {
+                            if (in.readableBytes() >= classLen + headerLen + contentLen) { //可读取的字节是否大于响应体的class、header、content之和
                                 if (classLen > 0) {
                                     clazz = new byte[classLen];
                                     in.readBytes(clazz);
@@ -109,10 +109,11 @@ public class RpcCommandDecoder implements CommandDecoder {
                                     content = new byte[contentLen];
                                     in.readBytes(content);
                                 }
-                            } else {// not enough data
+                            } else {// not enough data //没有接收到足够数据
                                 in.resetReaderIndex();
                                 return;
                             }
+                            //封装成RequestCommand，向后传递
                             RequestCommand command;
                             if (cmdCode == CommandCode.HEARTBEAT_VALUE) {
                                 command = new HeartbeatCommand();

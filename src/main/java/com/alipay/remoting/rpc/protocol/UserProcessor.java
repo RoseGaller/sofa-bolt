@@ -23,6 +23,8 @@ import com.alipay.remoting.BizContext;
 import com.alipay.remoting.RemotingContext;
 
 /**
+ * 处理用户自定义的请求
+ *
  * Defined all functions for biz to process user defined request.
  * 
  * @author xiaomin.cxm
@@ -98,6 +100,8 @@ public interface UserProcessor<T> {
     ExecutorSelector getExecutorSelector();
 
     /**
+     * 线程池选择器
+     *
      * Executor selector interface.
      * You can implement this and then provide a {@link ExecutorSelector} using method {@link #setExecutorSelector(ExecutorSelector)}
      *

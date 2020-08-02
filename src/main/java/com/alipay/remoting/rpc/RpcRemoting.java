@@ -38,7 +38,7 @@ import com.alipay.remoting.rpc.protocol.RpcRequestCommand;
 import com.alipay.remoting.util.RemotingUtil;
 
 /**
- * Rpc remoting capability.
+ * Rpc remoting capability.（1、创建RequestCommand、2、发送请求 3、对于同步请求，解析ResponseCommand，返回response object）
  * 
  * @author jiangping
  * @version $Id: RpcRemoting.java, v 0.1 Mar 6, 2016 9:09:48 PM tao Exp $
@@ -51,10 +51,10 @@ public abstract class RpcRemoting extends BaseRemoting {
     private static final Logger        logger = BoltLoggerFactory.getLogger("RpcRemoting");
 
     /** address parser to get custom args */
-    protected RemotingAddressParser    addressParser;
+    protected RemotingAddressParser    addressParser; // 负责解析地址
 
     /** connection manager */
-    protected DefaultConnectionManager connectionManager;
+    protected DefaultConnectionManager connectionManager; // 负责管理连接
 
     /**
      * default constructor
@@ -116,9 +116,10 @@ public abstract class RpcRemoting extends BaseRemoting {
      */
     public void oneway(final Connection conn, final Object request,
                        final InvokeContext invokeContext) throws RemotingException {
+        //创建RequestCommand，填充属性，序列化
         RequestCommand requestCommand = (RequestCommand) toRemotingCommand(request, conn,
             invokeContext, -1);
-        requestCommand.setType(RpcCommandType.REQUEST_ONEWAY);
+        requestCommand.setType(RpcCommandType.REQUEST_ONEWAY); //设置发送类型
         preProcessInvokeContext(invokeContext, requestCommand, conn);
         super.oneway(conn, requestCommand);
     }
@@ -183,6 +184,7 @@ public abstract class RpcRemoting extends BaseRemoting {
             timeoutMillis);
         responseCommand.setInvokeContext(invokeContext);
 
+        //解析出response object
         Object responseObject = RpcResponseResolver.resolveResponseObject(responseCommand,
             RemotingUtil.parseRemoteAddress(conn.getChannel()));
         return responseObject;

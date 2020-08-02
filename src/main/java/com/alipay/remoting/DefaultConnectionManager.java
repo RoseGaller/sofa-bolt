@@ -441,6 +441,8 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     * 如果没有ConnectionPool，则进行创建，并根据ConnectionSelectStrategy随机选择连接
+     *
      * If no task cached, create one and initialize the connections.
      *
      * @see ConnectionManager#getAndCreateIfAbsent(Url)
@@ -480,6 +482,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     * 创建连接
      * @see com.alipay.remoting.ConnectionManager#create(com.alipay.remoting.Url)
      */
     @Override
@@ -549,6 +552,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     *  发送请求时，获取或者创建ConnectionPool，从中获取连接
      * Get the mapping instance of {@link ConnectionPool} with the specified poolKey,
      * or create one if there is none mapping in connTasks.
      *
@@ -681,6 +685,8 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     * 初始化ConnectionPoolCall，并创建连接
+     *
      * a callable definition for initialize {@link ConnectionPool}
      *
      * @author tsui
@@ -724,6 +730,8 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     * 监控ConnectionPool，保证池子中的连接数量等于Url中的connNum
+     *
      * a callable definition for healing connections in {@link ConnectionPool}
      *
      * @author tsui
@@ -751,6 +759,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
     }
 
     /**
+     * 创建连接，与服务端建立连接（1、一开始创建expectNum的连接 2、先创建syncCreateNumWhenNotWarmup个连接，再异步创建expectNum-syncCreateNumWhenNotWarmup连接）
      * do create connections
      *
      * @param url target url
@@ -770,7 +779,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
             logger.debug("actual num {}, expect num {}, task name {}", actualNum, expectNum,
                 taskName);
         }
-        if (url.isConnWarmup()) {
+        if (url.isConnWarmup()) { //是否需要预热
             for (int i = actualNum; i < expectNum; ++i) {
                 Connection connection = create(url);
                 pool.add(connection);
@@ -795,7 +804,7 @@ public class DefaultConnectionManager extends AbstractLifeCycle implements Conne
             try {
                 this.asyncCreateConnectionExecutor.execute(new Runnable() {
                     @Override
-                    public void run() {
+                    public void run() { //异步创建连接
                         try {
                             for (int i = pool.size(); i < url.getConnNum(); ++i) {
                                 Connection conn = null;

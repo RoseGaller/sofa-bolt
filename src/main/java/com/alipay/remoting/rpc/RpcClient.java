@@ -61,7 +61,7 @@ public class RpcClient extends AbstractBoltClient {
                                                                          .getLogger("RpcRemoting");
 
     private final RpcTaskScanner                              taskScanner;
-    private final ConcurrentHashMap<String, UserProcessor<?>> userProcessors;
+    private final ConcurrentHashMap<String, UserProcessor<?>> userProcessors; //用户自定义Processor
     private final ConnectionEventHandler                      connectionEventHandler;
     private final ConnectionEventListener                     connectionEventListener;
 

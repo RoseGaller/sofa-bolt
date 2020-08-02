@@ -107,12 +107,12 @@ public class RpcResponseCommand extends ResponseCommand {
         if (this.getResponseObject() != null) {
             try {
                 if (this.getCustomSerializer() != null
-                    && this.getCustomSerializer().serializeContent(this)) {
+                    && this.getCustomSerializer().serializeContent(this)) { //自定义的序列化实现
                     return;
                 }
 
                 this.setContent(SerializerManager.getSerializer(this.getSerializer()).serialize(
-                    this.responseObject));
+                    this.responseObject)); //默认Hessian2
             } catch (SerializationException e) {
                 throw e;
             } catch (Exception e) {

@@ -30,7 +30,7 @@ public class RpcProtocolDecoder extends ProtocolCodeBasedDecoder {
     public static final int MIN_PROTOCOL_CODE_WITH_VERSION = 2;
 
     public RpcProtocolDecoder(int protocolCodeLength) {
-        super(protocolCodeLength);
+        super(protocolCodeLength); // 1
     }
 
     @Override

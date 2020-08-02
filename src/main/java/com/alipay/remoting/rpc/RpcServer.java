@@ -228,7 +228,7 @@ public class RpcServer extends AbstractRemotingServer {
         if (this.addressParser == null) {
             this.addressParser = new RpcAddressParser();
         }
-        if (this.switches().isOn(GlobalSwitch.SERVER_MANAGE_CONNECTION_SWITCH)) {
+        if (this.switches().isOn(GlobalSwitch.SERVER_MANAGE_CONNECTION_SWITCH)) { //是否管理客户端连接
             // in server side, do not care the connection service state, so use null instead of global switch
             ConnectionSelectStrategy connectionSelectStrategy = new RandomSelectStrategy(null);
             this.connectionManager = new DefaultServerConnectionManager(connectionSelectStrategy);
@@ -241,6 +241,8 @@ public class RpcServer extends AbstractRemotingServer {
             this.connectionEventHandler = new ConnectionEventHandler(switches());
             this.connectionEventHandler.setConnectionEventListener(this.connectionEventListener);
         }
+
+
         initRpcRemoting();
         this.bootstrap = new ServerBootstrap();
         this.bootstrap.group(bossGroup, workerGroup)
@@ -254,7 +256,7 @@ public class RpcServer extends AbstractRemotingServer {
         initWriteBufferWaterMark();
 
         // init byte buf allocator
-        if (ConfigManager.netty_buffer_pooled()) {
+        if (ConfigManager.netty_buffer_pooled()) { //是否启用池化的ByteBuffer分配器
             this.bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
         } else {
@@ -262,21 +264,20 @@ public class RpcServer extends AbstractRemotingServer {
                 .childOption(ChannelOption.ALLOCATOR, UnpooledByteBufAllocator.DEFAULT);
         }
 
-        // enable trigger mode for epoll if need
+        // enable trigger mode for epoll if need 如果支持epoll的话，LEVEL_TRIGGERED
         NettyEventLoopUtil.enableTriggeredMode(bootstrap);
 
         final boolean idleSwitch = ConfigManager.tcp_idle_switch();
-        final int idleTime = ConfigManager.tcp_server_idle();
-        final ChannelHandler serverIdleHandler = new ServerIdleHandler();
-        final RpcHandler rpcHandler = new RpcHandler(true, this.userProcessors);
+        final int idleTime = ConfigManager.tcp_server_idle(); //在ideleTime时间内，如果既没有读操作也没有写操作，发送IdleStateEvent，将此连接关闭
+        final ChannelHandler serverIdleHandler = new ServerIdleHandler(); //监听读写空闲触发的IdleStateEvent事件
+        final RpcHandler rpcHandler = new RpcHandler(true, this.userProcessors); //Rpc处理器，处理远端发送的请求
         this.bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
-
             @Override
             protected void initChannel(SocketChannel channel) {
                 ChannelPipeline pipeline = channel.pipeline();
                 pipeline.addLast("decoder", codec.newDecoder());
                 pipeline.addLast("encoder", codec.newEncoder());
-                if (idleSwitch) {
+                if (idleSwitch) { //是否启用空闲连接检测
                     pipeline.addLast("idleStateHandler", new IdleStateHandler(0, 0, idleTime,
                         TimeUnit.MILLISECONDS));
                     pipeline.addLast("serverIdleHandler", serverIdleHandler);
@@ -285,7 +286,6 @@ public class RpcServer extends AbstractRemotingServer {
                 pipeline.addLast("handler", rpcHandler);
                 createConnection(channel);
             }
-
             /**
              * create connection operation<br>
              * <ul>
@@ -305,6 +305,7 @@ public class RpcServer extends AbstractRemotingServer {
         });
     }
 
+    //服务端绑定指定的端口
     @Override
     protected boolean doStart() throws InterruptedException {
         this.channelFuture = this.bootstrap.bind(new InetSocketAddress(ip(), port())).sync();

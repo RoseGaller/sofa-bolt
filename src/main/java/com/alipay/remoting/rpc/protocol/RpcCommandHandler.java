@@ -45,6 +45,8 @@ import io.netty.channel.ChannelHandler.Sharable;
 
 /**
  * Rpc command handler.
+ *
+ * 处理server端接收的Command
  * 
  * @author jiangping
  * @version $Id: RpcServerHandler.java, v 0.1 2015-8-31 PM7:43:06 tao Exp $
@@ -54,15 +56,17 @@ public class RpcCommandHandler implements CommandHandler {
 
     private static final Logger logger = BoltLoggerFactory.getLogger("RpcRemoting");
     /** All processors */
-    ProcessorManager            processorManager;
+    ProcessorManager            processorManager; //管理所有的Processor
 
-    CommandFactory              commandFactory;
+    CommandFactory              commandFactory; //工厂类，创建不同的CommandRequest，CommandResponse
 
     /**
      * Constructor. Initialize the processor manager and register processors.
      */
     public RpcCommandHandler(CommandFactory commandFactory) {
         this.commandFactory = commandFactory;
+
+        //创建ProcessorManager，注册request processor、response processor、heartBeat processor
         this.processorManager = new ProcessorManager();
         //process request
         this.processorManager.registerProcessor(RpcCommandCode.RPC_REQUEST,
@@ -73,7 +77,7 @@ public class RpcCommandHandler implements CommandHandler {
 
         this.processorManager.registerProcessor(CommonCommandCode.HEARTBEAT,
             new RpcHeartBeatProcessor());
-
+        //注册默认的processor
         this.processorManager
             .registerDefaultProcessor(new AbstractRemotingProcessor<RemotingCommand>() {
                 @Override
@@ -85,6 +89,8 @@ public class RpcCommandHandler implements CommandHandler {
     }
 
     /**
+     * 处理远端请求的入口
+     *
      * @see CommandHandler#handleCommand(RemotingContext, Object)
      */
     @Override
@@ -93,11 +99,12 @@ public class RpcCommandHandler implements CommandHandler {
     }
 
     /*
+    * 处理请求
      * Handle the request(s).
      */
     private void handle(final RemotingContext ctx, final Object msg) {
         try {
-            if (msg instanceof List) {
+            if (msg instanceof List) { //接收的的批量请求
                 final Runnable handleTask = new Runnable() {
                     @Override
                     public void run() {
@@ -109,6 +116,7 @@ public class RpcCommandHandler implements CommandHandler {
                         }
                     }
                 };
+                //是否由ProcessorManager默认的executor执行
                 if (RpcConfigManager.dispatch_msg_list_in_default_executor()) {
                     // If msg is list ,then the batch submission to biz threadpool can save io thread.
                     // See com.alipay.remoting.decoder.ProtocolDecoder
@@ -116,7 +124,7 @@ public class RpcCommandHandler implements CommandHandler {
                 } else {
                     handleTask.run();
                 }
-            } else {
+            } else { //接收单个请求
                 process(ctx, msg);
             }
         } catch (final Throwable t) {
@@ -124,6 +132,7 @@ public class RpcCommandHandler implements CommandHandler {
         }
     }
 
+    //处理单个请求
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private void process(RemotingContext ctx, Object msg) {
         try {

@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import com.alipay.remoting.log.BoltLoggerFactory;
 
 /**
+ * 连接池
+ *
  * Connection pool
  * 
  * @author xiaomin.cxm
@@ -34,8 +36,8 @@ public class ConnectionPool implements Scannable {
 
     private static final Logger              logger = BoltLoggerFactory.getLogger("CommonDefault");
 
-    private CopyOnWriteArrayList<Connection> connections;
-    private ConnectionSelectStrategy         strategy;
+    private CopyOnWriteArrayList<Connection> connections; //连接
+    private ConnectionSelectStrategy         strategy; //连接选择策略
     private volatile long                    lastAccessTimestamp;
     private volatile boolean                 asyncCreationDone;
 
@@ -51,6 +53,7 @@ public class ConnectionPool implements Scannable {
     }
 
     /**
+     * 添加连接
      * add a connection
      * 
      * @param connection Connection

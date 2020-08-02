@@ -40,7 +40,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 public class RpcHandler extends ChannelInboundHandlerAdapter {
     private boolean                                     serverSide;
 
-    private ConcurrentHashMap<String, UserProcessor<?>> userProcessors;
+    private ConcurrentHashMap<String, UserProcessor<?>> userProcessors; //用户自定义的UserProcessor
 
     public RpcHandler() {
         serverSide = false;
@@ -58,9 +58,9 @@ public class RpcHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        ProtocolCode protocolCode = ctx.channel().attr(Connection.PROTOCOL).get();
-        Protocol protocol = ProtocolManager.getProtocol(protocolCode);
-        protocol.getCommandHandler().handleCommand(
+        ProtocolCode protocolCode = ctx.channel().attr(Connection.PROTOCOL).get();//解码时，设置ProtocolCode
+        Protocol protocol = ProtocolManager.getProtocol(protocolCode);//获取Protocol
+        protocol.getCommandHandler().handleCommand( //处理远端请求
             new RemotingContext(ctx, new InvokeContext(), serverSide, userProcessors), msg);
     }
 }

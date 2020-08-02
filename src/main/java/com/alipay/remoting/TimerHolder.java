@@ -22,6 +22,8 @@ import io.netty.util.HashedWheelTimer;
 import io.netty.util.Timer;
 
 /**
+ *
+ *  内部类实现的单例 HashedWheelTimer ，过期任务
  * A singleton holder of the timer for timeout.
  * 
  * @author jiangping

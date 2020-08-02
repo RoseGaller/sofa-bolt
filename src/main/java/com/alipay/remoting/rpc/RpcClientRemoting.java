@@ -28,6 +28,9 @@ import com.alipay.remoting.exception.RemotingException;
 import com.alipay.remoting.util.RemotingUtil;
 
 /**
+ *
+ * 客户端（获取connection、检测connection是否连接正常或者是否可写（有可能写的太快或者接收端接收的太慢导致不可写）、发送请求）
+ *
  * Rpc client remoting
  * 
  * @author xiaomin.cxm
@@ -121,6 +124,7 @@ public class RpcClientRemoting extends RpcRemoting {
         long start = System.currentTimeMillis();
         Connection conn;
         try {
+            //获取或者创建连接
             conn = this.connectionManager.getAndCreateIfAbsent(url);
         } finally {
             if (null != invokeContext) {

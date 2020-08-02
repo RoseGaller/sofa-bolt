@@ -30,6 +30,11 @@ import io.netty.util.Timeout;
 import io.netty.util.TimerTask;
 
 /**
+ * 1、同步
+ * 2、异步带有回调函数
+ * 3、异步，返回future
+ * 4、Oneway 不关心server的响应
+ *
  * Base remoting capability.
  * 
  * @author jiangping
@@ -39,13 +44,14 @@ public abstract class BaseRemoting {
     /** logger */
     private static final Logger logger = BoltLoggerFactory.getLogger("CommonDefault");
 
-    protected CommandFactory    commandFactory;
+    protected CommandFactory    commandFactory; // 生产不同的Request、Response
 
     public BaseRemoting(CommandFactory commandFactory) {
         this.commandFactory = commandFactory;
     }
 
     /**
+     * 同步
      * Synchronous invocation
      * 
      * @param conn
@@ -80,8 +86,8 @@ public abstract class BaseRemoting {
             future.putResponse(commandFactory.createSendFailedResponse(conn.getRemoteAddress(), e));
             logger.error("Exception caught when sending invocation, id={}", requestId, e);
         }
+        //阻塞timeoutMillis，如果没有响应，返回TIMEOUT Response
         RemotingCommand response = future.waitResponse(timeoutMillis);
-
         if (response == null) {
             conn.removeInvokeFuture(requestId);
             response = this.commandFactory.createTimeoutResponse(conn.getRemoteAddress());
@@ -92,6 +98,8 @@ public abstract class BaseRemoting {
     }
 
     /**
+     *
+     * 异步执行带有回调函数
      * Invocation with callback.
      * 
      * @param conn
@@ -102,6 +110,7 @@ public abstract class BaseRemoting {
      */
     protected void invokeWithCallback(final Connection conn, final RemotingCommand request,
                                       final InvokeCallback invokeCallback, final int timeoutMillis) {
+        //创建DefaultInvokeFuture，通过CountDownLatch阻塞响应
         final InvokeFuture future = createInvokeFuture(conn, request, request.getInvokeContext(),
             invokeCallback);
         conn.addInvokeFuture(future);
@@ -119,18 +128,20 @@ public abstract class BaseRemoting {
                 }
 
             }, timeoutMillis, TimeUnit.MILLISECONDS);
-            future.addTimeout(timeout);
+            future.addTimeout(timeout); //绑定Timeout
+
+            //加急写，立即发送请求，不需要缓存到ChannelOutboundBuffer，但是会降低吞吐量
             conn.getChannel().writeAndFlush(request).addListener(new ChannelFutureListener() {
 
                 @Override
                 public void operationComplete(ChannelFuture cf) throws Exception {
-                    if (!cf.isSuccess()) {
+                    if (!cf.isSuccess()) { //发送失败
                         InvokeFuture f = conn.removeInvokeFuture(requestId);
                         if (f != null) {
-                            f.cancelTimeout();
+                            f.cancelTimeout(); //删除Timeout
                             f.putResponse(commandFactory.createSendFailedResponse(
-                                conn.getRemoteAddress(), cf.cause()));
-                            f.tryAsyncExecuteInvokeCallbackAbnormally();
+                                conn.getRemoteAddress(), cf.cause())); //创建发送失败的响应
+                            f.tryAsyncExecuteInvokeCallbackAbnormally(); //异步执行异常的回调函数
                         }
                         logger.error("Invoke send failed. The address is {}",
                             RemotingUtil.parseRemoteAddress(conn.getChannel()), cf.cause());
@@ -151,6 +162,8 @@ public abstract class BaseRemoting {
     }
 
     /**
+     *
+     * 异步执行，返回future，与同步的区别就是没有调用waitResponse(long timeoutMillis)
      * Invocation with future returned.
      * 
      * @param conn
@@ -238,6 +251,7 @@ public abstract class BaseRemoting {
     }
 
     /**
+     * 创建不带有callBack的future
      * Create invoke future with {@link InvokeContext}.
      * @param request
      * @param invokeContext
@@ -247,6 +261,7 @@ public abstract class BaseRemoting {
                                                        final InvokeContext invokeContext);
 
     /**
+     * 创建带有回调函数的future
      * Create invoke future with {@link InvokeContext}.
      * @param conn
      * @param request

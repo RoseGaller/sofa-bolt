@@ -50,7 +50,7 @@ public class RpcCommandEncoder implements CommandEncoder {
                  * ver: version for protocol
                  * type: request/response/request oneway
                  * cmdcode: code for remoting command
-                 * ver2:version for remoting command
+                 * ver2:version for remoting、、 command
                  * requestId: id of request
                  * codec: code for codec
                  * (req)timeout: request timeout.

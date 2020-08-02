@@ -66,16 +66,18 @@ public class RpcProtocol implements Protocol {
     public static final byte PROTOCOL_CODE       = (byte) 1;
     private static final int REQUEST_HEADER_LEN  = 22;
     private static final int RESPONSE_HEADER_LEN = 20;
-    private CommandEncoder   encoder;
-    private CommandDecoder   decoder;
-    private HeartbeatTrigger heartbeatTrigger;
-    private CommandHandler   commandHandler;
-    private CommandFactory   commandFactory;
+    private CommandEncoder   encoder; //编码
+    private CommandDecoder   decoder; //解码
+    private HeartbeatTrigger heartbeatTrigger; //心跳检测
+    private CommandHandler   commandHandler; //处理请求
+    private CommandFactory   commandFactory; //创建Command
 
     public RpcProtocol() {
         this.encoder = new RpcCommandEncoder();
         this.decoder = new RpcCommandDecoder();
+
         this.commandFactory = new RpcCommandFactory();
+
         this.heartbeatTrigger = new RpcHeartbeatTrigger(this.commandFactory);
         this.commandHandler = new RpcCommandHandler(this.commandFactory);
     }
